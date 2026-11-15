@@ -1,88 +1,50 @@
 document.documentElement.classList.add('js');
 
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const revealItems = document.querySelectorAll('.reveal');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const header = document.querySelector('.site-header');
+const rollingText = document.querySelector('.rolling-label div');
+let scrollFrame = 0;
 
-if (!reduceMotion && 'IntersectionObserver' in window) {
+function updateScrollDetails() {
+  header.classList.toggle('is-scrolled', window.scrollY > 30);
+  if (!prefersReducedMotion) {
+    const shift = Math.max(-235, Math.min(0, -window.scrollY * 0.16));
+    rollingText.style.setProperty('--roll', `${shift}px`);
+  }
+  scrollFrame = 0;
+}
+
+window.addEventListener('scroll', () => {
+  if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollDetails);
+}, { passive: true });
+updateScrollDetails();
+
+const animatedElements = document.querySelectorAll('.ink-in, .impact-row, .contact__line, .study-flow');
+if ('IntersectionObserver' in window) {
   const observer = new IntersectionObserver((entries, currentObserver) => {
     for (const entry of entries) {
       if (entry.isIntersecting) {
         entry.target.classList.add('is-visible');
+        if (entry.target.classList.contains('study-flow')) entry.target.closest('.feature').classList.add('is-active');
         currentObserver.unobserve(entry.target);
       }
     }
-  }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
-  revealItems.forEach(item => observer.observe(item));
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  animatedElements.forEach(element => observer.observe(element));
 } else {
-  revealItems.forEach(item => item.classList.add('is-visible'));
-}
-
-const impactStrip = document.querySelector('.impact-strip');
-if (impactStrip && !reduceMotion && 'IntersectionObserver' in window) {
-  impactStrip.querySelectorAll('[data-count-to]').forEach(number => {
-    number.textContent = number.dataset.countFrom;
-  });
-  const impactObserver = new IntersectionObserver((entries, observer) => {
-    if (!entries[0].isIntersecting) return;
-    observer.disconnect();
-    impactStrip.querySelectorAll('[data-count-to]').forEach((number, index) => {
-      const start = Number(number.dataset.countFrom);
-      const end = Number(number.dataset.countTo);
-      const duration = 1100;
-      const delay = index * 140;
-      const began = performance.now() + delay;
-      number.closest('.impact').classList.add('is-counting');
-      function step(now) {
-        const progress = Math.max(0, Math.min(1, (now - began) / duration));
-        const eased = 1 - Math.pow(1 - progress, 3);
-        number.textContent = Math.round(start + (end - start) * eased);
-        if (progress < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    });
-  }, { threshold: 0.25 });
-  impactObserver.observe(impactStrip);
-}
-
-const pageProgress = document.querySelector('.page-progress span');
-const journeyLine = document.querySelector('.journey-line');
-const journeyFill = document.querySelector('.journey-line__fill');
-let scrollTicking = false;
-
-function updateScrollMotion() {
-  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-  pageProgress.style.width = maxScroll > 0 ? `${Math.min(100, window.scrollY / maxScroll * 100)}%` : '0%';
-
-  const lineTop = journeyLine.getBoundingClientRect().top + window.scrollY;
-  const lineHeight = journeyLine.offsetHeight;
-  const reached = window.scrollY + window.innerHeight * 0.56 - lineTop;
-  journeyFill.style.height = `${Math.max(0, Math.min(lineHeight, reached))}px`;
-  scrollTicking = false;
-}
-
-window.addEventListener('scroll', () => {
-  if (!scrollTicking) {
-    window.requestAnimationFrame(updateScrollMotion);
-    scrollTicking = true;
-  }
-}, { passive: true });
-window.addEventListener('resize', updateScrollMotion, { passive: true });
-updateScrollMotion();
-
-if (!reduceMotion && window.matchMedia('(pointer: fine)').matches) {
-  const hero = document.querySelector('.hero');
-  const sculpture = document.querySelector('.hero__sculpture');
-  hero.addEventListener('pointermove', event => {
-    const rect = hero.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - .5;
-    const y = (event.clientY - rect.top) / rect.height - .5;
-    sculpture.style.setProperty('--pointer-x', `${x * 18}px`);
-    sculpture.style.setProperty('--pointer-y', `${y * 18}px`);
-  });
-  hero.addEventListener('pointerleave', () => {
-    sculpture.style.setProperty('--pointer-x', '0px');
-    sculpture.style.setProperty('--pointer-y', '0px');
+  animatedElements.forEach(element => {
+    element.classList.add('is-visible');
+    if (element.classList.contains('study-flow')) element.closest('.feature').classList.add('is-active');
   });
 }
+
+const blueprint = document.querySelector('.hero__blueprint');
+const replayButton = document.querySelector('.blueprint__replay');
+replayButton.addEventListener('click', () => {
+  if (prefersReducedMotion) return;
+  blueprint.classList.remove('is-replaying');
+  void blueprint.offsetWidth;
+  blueprint.classList.add('is-replaying');
+});
 
 document.querySelector('#year').textContent = new Date().getFullYear();
